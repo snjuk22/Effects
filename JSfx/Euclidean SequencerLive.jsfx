@@ -1,0 +1,338 @@
+desc: Euclidean Sequencer Live
+
+// Snjuk2 ver 12.12.23
+
+//slider1:0<0,16,1{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}>-In  Ch    
+slider4:0<0,15,1{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}>-Out Ch     
+
+slider6:48<0,127,1{0: C-1,1: C#/Db-1,2: D-1,3: D#/Eb-1,4: E-1,5: F-1,6: F#/Gb-1,7: G-1,8: G#/Ab-1,9: A-1,10: A#/Bb-1,11: B-1,12: C0,13: C#/Db0,14: D0,15: D#/Eb0,16: E0,17: F0,18: F#/Gb0,19: G0,20: G#/Ab0,21: A0,22: A#/Bb0,23: B0,24: C1,25: C#/Db1,26: D1,27: D#/Eb1,28: E1,29: F1,30: F#/Gb1,31: G1,32: G#/Ab1,33: A1,34: A#/Bb1,35: B1,36: C2,37: C#/Db2,38: D2,39: D#/Eb2,40: E2,41: F2,42: F#/Gb2,43: G2,44: G#/Ab2,45: A2,46: A#/Bb2,47: B2,48: C3,49: C#/Db3,50: D3,51: D#/Eb3,52: E3,53: F3,54: F#/Gb3,55: G3,56: G#/Ab3,57: A3,58: A#/Bb3,59: B3,60: C4,61: C#/Db4,62: D4,63: D#/Eb4,64: E4,65: F4,66: F#/Gb4,67: G4,68: G#/Ab4,69: A4,70: A#/Bb4,71: B4,72: C5,73: C#/Db5,74: D5,75: D#/Eb5,76: E5,77: F5,78: F#/Gb5,79: G5,80: G#/Ab5,81: A5,82: A#/Bb5,83: B5,84: C6,85: C#/Db6,86: D6,87: D#/Eb6,88: E6,89: F6,90: F#/Gb6,91: G6,92: G#/Ab6,93: A6,94: A#/Bb6,95: B6,96: C7,97: C#/Db7,98: D7,99: D#/Eb7,100: E7,101: F7,102: F#/Gb7,103: G7,104: G#/Ab7,105: A7,106: A#/Bb7,107: B7,108: C8,109: C#/Db8,110: D8,111: D#/Eb8,112: E8,113: F8,114: F#/Gb8,115: G8,116: G#/Ab8,117: A8,118: A#/Bb8,119: B8,120: C9,121: C#/Db9,122: D9,123: D#/Eb9,124: E9,125: F9,126: F#/Gb9,127: G9}>Note           
+slider7:0<-36,36,1> Pitch      
+slider8:127<1,127,1>Velocity      
+slider9:100<0,100,1>Probability   
+
+slider12:reset=0<0,1,1> -Reset
+
+slider23:1<0.25,8,0.25>Rate          
+slider24:1<0.1,2,0.1>Rate  x      
+
+slider34:0<0,1,1{play,stop}>-Mode      
+
+slider42:16<2,32,1>Steps       
+slider43:1<1,31,1>Events       
+slider44:0<0,32,1>Rotation       
+
+
+in_pin:none
+out_pin:none
+
+@init
+ext_noinit = 1;
+time_counter = 0;
+old_note = -1;
+old_pulses = -1;
+old_length = -1;     
+old_mode = -1;
+old_rotate = 0;
+old_mouse_cap = 0;
+
+@slider
+pulses_slider = slider43;
+length_slider = slider42;
+
+
+((pulses_slider != old_pulses) || (length_slider != old_length)) ? (
+  (
+    left_len = 1;
+    right_len = 1;
+    left_rep = max(pulses_slider, 1);
+    right_rep = max(length_slider, left_rep + 1) - left_rep;
+    left = 0;
+    right = left_rep + right_rep;
+    left[0] = 1;
+    right[0] = 0;
+    while(
+      memcpy(left + left_len, right, right_len);
+      (left_rep > right_rep) ? (
+        memcpy(right, left, left_len);
+        left_len += right_len;
+        right_len = left_len - right_len;
+        right_rep = left_rep - right_rep;
+        left_rep -= right_rep;
+      ) : (
+        left_len += right_len;
+        right_rep -= left_rep;
+      );
+      right_rep > 1;
+    );
+    i = 1;
+    (i < left_rep) ? (
+      while(
+        memcpy(left + (left_len * i), left, left_len);
+        i += 1;
+        i < left_rep;
+      );
+    );
+    i = 1;
+    (i < right_rep) ? (
+      while(
+        memcpy(right + (right_len * i), right, right_len);
+        i += 1;
+        i < right_rep;
+      );
+    );
+    left_len *= left_rep;
+    right_len *= right_rep;
+    memcpy(left + left_len, right, right_len);
+    left_len += right_len;
+  );
+  old_pulses = pulses_slider;
+  old_length = length_slider;
+  (
+    rotate_i = 0;
+    (rotate_i < old_rotate) ? (
+      while(
+        rotate_temp = left[left_len - 1];
+        memcpy(left + 1, left, left_len - 1);
+        left[0] = rotate_temp;
+        rotate_i += 1;
+        rotate_i < old_rotate;
+      );
+    );
+  );
+  old_rotate = 0;
+  slider44 = 0;
+);
+rotate_slider = slider44 % left_len;
+(rotate_slider != old_rotate) ? (
+  (
+    rotate_i = 0;
+    (rotate_i < old_rotate) ? (
+      while(
+        rotate_temp = left[left_len - 1];
+        memcpy(left + 1, left, left_len - 1);
+        left[0] = rotate_temp;
+        rotate_i += 1;
+        rotate_i < old_rotate;
+      );
+    );
+  );
+  (
+    rotate_i = 0;
+    (rotate_i < rotate_slider) ? (
+      while(
+        rotate_temp = left[0];
+        memcpy(left, left + 1, left_len - 1);
+        left[left_len - 1] = rotate_temp;
+        rotate_i += 1;
+        rotate_i < rotate_slider;
+      );
+    );
+  );
+  old_rotate = rotate_slider;
+);
+
+duration_slider = slider23;      //Rate
+rate = slider24;
+note_slider = slider6 & 127;
+velocity_slider = slider8 & 127;
+channel_slider = (slider4 - 1) & 15;
+mode_slider = slider34;
+pitch = slider7;
+chance = slider9;
+
+
+@block
+  
+  time_counter -= samplesblock;
+  (time_counter < 0) ? (
+    (old_note >= 0) ? (
+      midisend(time_counter + samplesblock, old_note_msg1, old_note);
+      old_note = -1;
+    );
+    
+     play ? (  
+      
+        left[left_pointer] ? (                      // ch
+        old_note = note_slider;
+        old_note_msg1 = 144 | channel_slider;
+        
+        old_note > 0 ? coinFlip = ceil(rand(100));
+        coinFlip > chance ? velocity_slider = 0 : velocity_slider = slider8 & 127;
+          midisend(time_counter + samplesblock, old_note_msg1, old_note + pitch | (velocity_slider << 8));
+            
+         );
+         
+    left_pointer = (left_pointer + 1) % left_len;
+    );
+    time_counter += ( max((1 / (tempo / 60)) * duration_slider * rate * srate, samplesblock);
+    );
+  );
+  
+ reset == 1 ? left_pointer = 0;
+
+
+
+@gfx       100 100    //--------------------------------------------------------------------------                      
+
+                     //  orange       //gfx_r=0.87; gfx_g=0.53; gfx_b=0.11; gfx_a=1;
+                     //  blue         //gfx_r=0.19; gfx_g=0.69; gfx_b=0.79; gfx_a=1; 
+
+  _w = gfx_w;  
+  _w > 2560 ? _w = 2560;              // HDMI
+  gfx_r=gfx_g=gfx_b=0.2; gfx_a=1;
+  gfx_x=gfx_y=0.2;
+  gfx_rectto(gfx_w+1, gfx_h+1); 
+   
+  _a = 0;
+  _min = 16384;
+  _max = 0;
+  _pp = 0;
+  
+  
+(mouse_cap != old_mouse_cap) ? (
+  old_mouse_cap = mouse_cap;
+  click = mouse_cap ? 1 : 0;
+) : (
+  click = 0;
+);
+
+
+gfx_clear = 16777215;
+
+//--------------------------------------------//Centre Button
+
+    gfx_x = (gfx_w / 2);
+    gfx_y = (gfx_h / 2);
+
+    gfx_r = 1;        
+    gfx_g = 1;
+    gfx_b = 1;
+    gfx_a = 1;
+    
+    x = gfx_x;
+    y = gfx_y;
+    
+    gfx_circle(x,y,13,0);
+    
+    
+    
+    (click && (mouse_x >= (x - 15)) && (mouse_y >= (y - 15)) && (mouse_x <= (x + 15)) && (mouse_y <= (y + 15))) ? (
+      mode_slider == 1 ? (
+      
+       mode_slider = 0;
+       play = 1;
+       slider34 = mode_slider;
+      ):( 
+       mode_slider = 1;
+       play = 0;
+       slider34 = mode_slider;
+      );
+    );
+    
+    
+    mode_slider == 0 ? (
+    gfx_set(0.2,0.2,0.2,1);
+    gfx_circle(x,y,9,1);
+    );
+     
+    mode_slider == 1 ? (
+      gfx_set(1,1,1);
+      gfx_triangle(x-3,y-5,x-3,y+5,x+5,y);
+      ) : (
+    mode_slider == 0 ? (
+      gfx_set(1,1,1);
+      gfx_rect(x-5,y-4,11,11);
+      );
+    );
+    
+    mouse_x >= (x - 15) && mouse_y >= (y - 15) && mouse_x <= (x + 15) && mouse_y <= (y + 15) ? (
+      mode_slider == 1 ? (
+        gfx_set(0,1,0);
+        gfx_triangle(x-3,y-5,x-3,y+5,x+5,y);
+        ) : (
+      mode_slider == 0 ? (
+        gfx_set(1,0.3,0);
+        gfx_rect(x-5,y-4,11,11);
+        );
+      );
+   );
+
+//--------------------------------------
+
+  gfx_x = (gfx_w / 2);
+  gfx_y = (gfx_h / 2);
+
+  x0 = gfx_x;
+  y0 = gfx_y;
+  g_i = 0;
+  
+  g_i < left_len ? (
+    while(
+      angle = (2 * $pi * g_i) / left_len;
+      x = x0 + ((min(gfx_w, gfx_h) / 2.5) * sin(angle));
+      y = y0 - ((min(gfx_w, gfx_h) / 2.5) * cos(angle));
+      
+     (g_i == left_pointer-1)  ? (         //start pos
+      
+          gfx_r = 0.87;               // play position
+          gfx_g = 0.53;
+          gfx_b = 0.11;
+          gfx_a = 1;
+      ) : (
+          gfx_r = 0.19;               // not play position
+          gfx_g = 0.69;
+          gfx_b = 0.79;
+          gfx_a = 1;
+      );
+      
+      
+      
+  
+        (click && (mouse_x >= (x - 5)) && (mouse_y >= (y - 5)) && (mouse_x <= (x + 10)) && (mouse_y <= (y + 10))) ? (
+          left[g_i] = !(left[g_i]);
+        );
+        
+      (left[g_i]) ? (
+            gfx_x = (x - 5);
+            gfx_y = (y - 5);
+            gfx_circle(x,y,5,1)                     
+      ) : (
+            gfx_x = (x - 5);
+            gfx_y = (y - 5);
+            gfx_circle(x,y,5); 
+      );
+    
+      g_i += 1;
+      g_i < left_len;
+    );
+  );
+  
+  old_note == note_slider ? (
+   coinFlip > chance ? gfx_set(1,0,0,1) : gfx_set(0.87,0.53,0.11,1);
+  
+   gfx_circle(x0,y0,22,0);
+   gfx_circle(x0,y0,20,0);
+   gfx_circle(x0,y0,21,0);
+   );
+   
+ // -------------------------------------------------Reset
+    
+  x = 10 ; y = 10 ; w = 48 ;  h = 16 ;
+  
+  gfx_set(0.4,0.4,0.4,1); 
+  gfx_x =x ; gfx_y =y ;
+  gfx_rect(x, y, w, h, 0);
+  
+  reset == 1 ? gfx_set(1,0,0,1) : gfx_set(0,1,0,1);
+  gfx_setfont(1,"Arial bold fat",13);
+  gfx_x =x+7 ; gfx_y =y + 1 ;
+  gfx_drawstr(" Reset");
+        reset = 0;
+        click && mouse_x >= x && mouse_y >= y && mouse_x <= (x + w) && mouse_y <= (y + h) ? (
+           reset == 0 ? reset = 1 : reset = 0;
+           slider12 = reset;
+          slider_automate(slider12);
+        
+       );
+  
+
